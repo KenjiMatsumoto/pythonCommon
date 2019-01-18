@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[2]:
+# In[1]:
 
 
 import os
@@ -11,6 +11,7 @@ import pandas as pd
 import librosa
 import librosa.display
 import matplotlib.pyplot as plt
+import cv2
 
 
 # In[3]:
@@ -65,15 +66,19 @@ def stretch_sound(x, rate=1.1):
         return np.pad(x, (0, max(0, input_length - len(x))), "constant")
 
 # save wave data in npz, with augmentation
-def save_np_data(filename, x, y, aug=None, rates=None):
-    np_data = np.zeros(freq*time*len(x)).reshape(len(x), freq, time)
-    np_targets = np.zeros(len(y))
-    for i in range(len(y)):
-        _x, fs = load_wave_data(train_dir, x[i])
+def save_np_data(filename, x, y, y_start_index, y_end_index, x_data_size, aug=None, rates=None):
+    np_data = np.zeros(freq*time*x_data_size).reshape(x_data_size, freq, time)
+    np_targets = np.zeros(y_end_index - y_start_index)
+    index = 0
+    for i in range(y_start_index, y_end_index):
+        _x, fs = Common.load_wave_data(train_dir, x[i])
         if aug is not None:
             _x = aug(x=_x, rate=rates[i])
-        _x = calculate_melsp(_x)
-        np_data[i] = _x.resize(freq, time)
-        np_targets[i] = y[i]
+        _x = Common.calculate_melsp(_x)
+        # resizeで足りない秒数は0埋めにする
+        res = cv2.resize(_x, dsize=(time, freq), interpolation=cv2.INTER_CUBIC)
+        np_data[index] = res
+        np_targets[index] = y[i]
+        index += 1
     np.savez(filename, x=np_data, y=np_targets)
 
